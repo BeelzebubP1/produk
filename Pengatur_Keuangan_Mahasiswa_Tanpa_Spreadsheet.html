@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pengatur Keuangan Mahasiswa</title>
+<style>
+:root{--primary:#3457d5;--bg:#f4f6fb;--ink:#172033;--muted:#667085;--line:#e5e9f1;--green:#16845b;--red:#c43d4d;--amber:#c27b18}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:15px Arial,sans-serif}
+.container{max-width:1100px;margin:auto;padding:26px 18px 50px}
+header{display:flex;justify-content:space-between;align-items:center;gap:14px;margin-bottom:22px}
+h1{font-size:25px;margin:0 0 5px}h2{font-size:18px;margin:0 0 15px}.muted{color:var(--muted);font-size:13px}
+input,select,textarea{width:100%;padding:10px;border:1px solid #cfd6e3;border-radius:8px;background:#fff;font:inherit;color:var(--ink)}
+button{border:0;border-radius:8px;background:var(--primary);color:#fff;padding:11px 15px;font-weight:700;cursor:pointer}
+button.secondary{background:#edf1ff;color:var(--primary)}button.danger{background:#fff0f1;color:var(--red)}button.small{padding:7px 9px;font-size:12px}
+.cards{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:14px}
+.card,.panel{background:#fff;border:1px solid var(--line);border-radius:13px;padding:17px;box-shadow:0 2px 8px #17203308}
+.value{font-size:22px;font-weight:700;margin-top:8px;overflow-wrap:anywhere}.green{color:var(--green)}.red{color:var(--red)}
+.progress{height:9px;background:#edf0f5;border-radius:20px;overflow:hidden;margin:12px 0}.bar{height:100%;background:var(--green);width:0}.bar.warn{background:var(--amber)}.bar.over{background:var(--red)}
+.columns{display:grid;grid-template-columns:.85fr 1.5fr;gap:14px;margin-top:14px;align-items:start}
+.field{margin:12px 0}.field label{display:block;font-size:13px;font-weight:bold;margin-bottom:5px}
+.filters{display:grid;grid-template-columns:1fr 1fr 1.2fr;gap:8px;margin-bottom:12px}
+.table-wrap{overflow:auto}table{width:100%;border-collapse:collapse;font-size:13px}th,td{text-align:left;padding:10px 7px;border-bottom:1px solid var(--line);vertical-align:top}th{color:var(--muted)}
+.amount{text-align:right;white-space:nowrap;font-weight:bold}.actions{white-space:nowrap;text-align:right}
+.budget-row{display:flex;align-items:end;gap:9px}.budget-row>div{flex:1}
+.notice{display:none;padding:10px 12px;border-radius:8px;margin-bottom:12px;font-size:13px}.notice.ok{display:block;background:#eaf8f1;color:#126b49}.notice.error{display:block;background:#fff0f1;color:#a32636}
+.empty{text-align:center;color:var(--muted);padding:24px}
+@media(max-width:780px){.cards{grid-template-columns:repeat(2,1fr)}.columns{grid-template-columns:1fr}}
+@media(max-width:500px){.container{padding:18px 11px}.top{align-items:flex-start;flex-direction:column}header{align-items:flex-start;flex-direction:column}.filters{grid-template-columns:1fr 1fr}.filters input{grid-column:1/-1}.value{font-size:18px}.budget-row{display:block}}
+</style>
+</head>
+<body>
+<main class="container">
+<header>
+ <div><h1>Pengatur Keuangan Mahasiswa</h1><div class="muted">Catat pemasukan, kendalikan pengeluaran, dan pantau uang saku.</div></div>
+ <input id="month" type="month" aria-label="Pilih bulan" style="width:auto">
+</header>
+<div id="notice" class="notice"></div>
+
+<section class="cards">
+ <div class="card"><div class="muted">Total Pemasukan</div><div class="value green" id="income">Rp0</div></div>
+ <div class="card"><div class="muted">Total Pengeluaran</div><div class="value red" id="expense">Rp0</div></div>
+ <div class="card"><div class="muted">Sisa Uang</div><div class="value" id="balance">Rp0</div></div>
+ <div class="card"><div class="muted">Batas Pengeluaran</div><div class="value" id="limit">Belum diatur</div></div>
+</section>
+
+<section class="panel">
+ <h2>Progres Pengeluaran Bulanan</h2>
+ <div class="muted" id="progressText">Tetapkan batas pengeluaran untuk melihat progres.</div>
+ <div class="progress"><div class="bar" id="progressBar"></div></div>
+ <div class="muted" id="progressStatus"></div>
+</section>
+
+<div class="columns">
+ <section class="panel">
+  <h2 id="formTitle">Tambah Transaksi</h2>
+  <form id="transactionForm">
+   <div class="field"><label for="type">Jenis transaksi</label><select id="type"><option value="expense">Pengeluaran</option><option value="income">Pemasukan</option></select></div>
+   <div class="field"><label for="amount">Nominal (Rp)</label><input id="amount" type="number" min="1" step="1" required placeholder="Contoh: 25000"></div>
+   <div class="field"><label for="category">Kategori</label><select id="category"></select></div>
+   <div class="field"><label for="date">Tanggal</label><input id="date" type="date" required></div>
+   <div class="field"><label for="note">Catatan (opsional)</label><textarea id="note" rows="3" maxlength="300" placeholder="Contoh: makan siang di kampus"></textarea></div>
+   <button id="submitBtn" type="submit">Simpan Transaksi</button>
+   <button id="cancelEdit" class="secondary" type="button" style="display:none">Batal Edit</button>
+  </form>
+ </section>
+
+ <section class="panel">
+  <h2>Riwayat Transaksi</h2>
+  <div class="filters">
+   <select id="typeFilter"><option value="all">Semua jenis</option><option value="income">Pemasukan</option><option value="expense">Pengeluaran</option></select>
+   <select id="monthFilter"><option value="selected">Bulan dipilih</option><option value="all">Semua bulan</option></select>
+   <input id="search" type="search" placeholder="Cari kategori atau catatan">
+  </div>
+  <div class="table-wrap"><table>
+   <thead><tr><th>Tanggal</th><th>Transaksi</th><th>Catatan</th><th class="amount">Nominal</th><th class="actions">Aksi</th></tr></thead>
+   <tbody id="transactionRows"></tbody>
+  </table></div>
+  <div class="muted" id="count" style="margin-top:10px"></div>
+ </section>
+</div>
+
+<section class="panel" style="margin-top:14px">
+ <h2>Batas Pengeluaran Bulanan</h2>
+ <div class="budget-row">
+  <div><label class="muted" for="budgetInput">Masukkan batas pengeluaran (Rp)</label><input id="budgetInput" type="number" min="0" step="1" placeholder="Contoh: 1000000"></div>
+  <button id="saveBudget">Simpan Batas</button>
+ </div>
+</section>
+<p class="muted" style="margin-top:16px">Penyimpanan menggunakan browser pada perangkat ini. Data tidak dikirim ke Google Spreadsheet atau server.</p>
+</main>
+
+<script>
+const CATEGORIES=['Uang Saku','Beasiswa','Gaji/Part Time','Makanan','Minuman','Transportasi','Kos','Pendidikan','Pulsa & Internet','Hiburan','Belanja','Kesehatan','Tabungan','Lainnya'];
+const $=id=>document.getElementById(id);
+const STORAGE_KEY='pengaturKeuanganMahasiswa_v1';
+let state=loadState(), editingId=null;
+const today=()=>{const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`};
+const currentMonth=()=>today().slice(0,7);
+const money=n=>new Intl.NumberFormat('id-ID',{style:'currency',currency:'IDR',maximumFractionDigits:0}).format(Number(n)||0);
+function loadState(){try{return JSON.parse(localStorage.getItem(STORAGE_KEY))||{transactions:[],budgets:{}}}catch(e){return {transactions:[],budgets:{}}}}
+function persist(){localStorage.setItem(STORAGE_KEY,JSON.stringify(state))}
+function notify(text,error=false){$('notice').textContent=text;$('notice').className='notice '+(error?'error':'ok');setTimeout(()=>$('notice').style.display='none',3500)}
+function escapeHTML(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function selectedTransactions(){const m=$('month').value;return state.transactions.filter(t=>t.date.slice(0,7)===m)}
+function renderDashboard(){
+ const tx=selectedTransactions(),income=tx.filter(t=>t.type==='income').reduce((s,t)=>s+t.amount,0),expense=tx.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0);
+ const limit=Number(state.budgets[$('month').value]||0),remaining=limit-expense,percent=limit?expense/limit*100:0;
+ $('income').textContent=money(income);$('expense').textContent=money(expense);$('balance').textContent=money(income-expense);$('balance').className='value '+(income-expense<0?'red':'green');$('limit').textContent=limit?money(limit):'Belum diatur';
+ $('progressText').textContent=limit?`${money(expense)} dari ${money(limit)} (${percent.toFixed(1)}%)`:'Tetapkan batas pengeluaran untuk melihat progres.';
+ $('progressBar').style.width=Math.min(100,Math.max(0,percent))+'%';$('progressBar').className='bar'+(percent>=100?' over':percent>=80?' warn':'');
+ $('progressStatus').textContent=!limit?'Batas belum ditetapkan.':remaining<0?`Pengeluaran melewati batas sebesar ${money(-remaining)}.`:percent>=80?`Pengeluaran mendekati batas. Sisa ${money(remaining)}.`:`Sisa batas pengeluaran ${money(remaining)}.`;
+ $('budgetInput').value=limit||'';
+}
+function renderHistory(){
+ const m=$('month').value,filterMonth=$('monthFilter').value,filterType=$('typeFilter').value,q=$('search').value.trim().toLowerCase();
+ const rows=state.transactions.filter(t=>(filterMonth==='all'||t.date.slice(0,7)===m)&&(filterType==='all'||t.type===filterType)&&(!q||t.category.toLowerCase().includes(q)||(t.note||'').toLowerCase().includes(q))).sort((a,b)=>b.date.localeCompare(a.date)||b.createdAt-a.createdAt);
+ $('transactionRows').innerHTML=rows.length?rows.map(t=>`<tr>
+ <td>${escapeHTML(t.date)}</td><td><strong>${escapeHTML(t.category)}</strong><br><span class="${t.type==='income'?'green':'red'}">${t.type==='income'?'Pemasukan':'Pengeluaran'}</span></td>
+ <td>${escapeHTML(t.note||'—')}</td><td class="amount ${t.type==='income'?'green':'red'}">${t.type==='income'?'+':'−'}${money(t.amount)}</td>
+ <td class="actions"><button class="small secondary" onclick="editTransaction('${t.id}')">Edit</button> <button class="small danger" onclick="deleteTransaction('${t.id}')">Hapus</button></td></tr>`).join(''):'<tr><td colspan="5" class="empty">Belum ada transaksi yang sesuai.</td></tr>';
+ $('count').textContent=`${rows.length} transaksi ditampilkan.`;
+}
+function render(){renderDashboard();renderHistory()}
+function resetForm(){editingId=null;$('transactionForm').reset();$('date').value=today();$('type').value='expense';$('formTitle').textContent='Tambah Transaksi';$('submitBtn').textContent='Simpan Transaksi';$('cancelEdit').style.display='none'}
+$('category').innerHTML=CATEGORIES.map(c=>`<option value="${escapeHTML(c)}">${escapeHTML(c)}</option>`).join('');
+$('month').value=currentMonth();$('date').value=today();
+$('transactionForm').addEventListener('submit',e=>{
+ e.preventDefault();const amount=Number($('amount').value),date=$('date').value,category=$('category').value;
+ if(!Number.isFinite(amount)||amount<=0){notify('Nominal harus lebih besar dari nol.',true);return}
+ if(!date){notify('Tanggal transaksi harus diisi.',true);return}
+ const item={id:editingId||((crypto.randomUUID&&crypto.randomUUID())||String(Date.now()+Math.random())),type:$('type').value,amount,category,date,note:$('note').value.trim(),createdAt:Date.now()};
+ if(editingId){const i=state.transactions.findIndex(t=>t.id===editingId);if(i>=0){item.createdAt=state.transactions[i].createdAt;state.transactions[i]=item}}else state.transactions.push(item);
+ persist();$('month').value=date.slice(0,7);resetForm();render();notify('Transaksi berhasil disimpan.');
+});
+window.editTransaction=id=>{const t=state.transactions.find(x=>x.id===id);if(!t)return;editingId=id;$('type').value=t.type;$('amount').value=t.amount;$('category').value=t.category;$('date').value=t.date;$('note').value=t.note||'';$('formTitle').textContent='Edit Transaksi';$('submitBtn').textContent='Simpan Perubahan';$('cancelEdit').style.display='inline-block';window.scrollTo({top:0,behavior:'smooth'})};
+window.deleteTransaction=id=>{const t=state.transactions.find(x=>x.id===id);if(!t)return;if(!confirm(`Hapus transaksi ${t.category} sebesar ${money(t.amount)}?`))return;state.transactions=state.transactions.filter(x=>x.id!==id);persist();if(editingId===id)resetForm();render();notify('Transaksi berhasil dihapus.')};
+$('cancelEdit').addEventListener('click',resetForm);
+$('saveBudget').addEventListener('click',()=>{const v=Number($('budgetInput').value);if(!Number.isFinite(v)||v<0){notify('Batas pengeluaran harus nol atau lebih.',true);return}state.budgets[$('month').value]=v;persist();render();notify('Batas pengeluaran berhasil disimpan.')});
+$('month').addEventListener('change',render);
+['typeFilter','monthFilter'].forEach(id=>$(id).addEventListener('change',renderHistory));
+$('search').addEventListener('input',renderHistory);
+render();
+</script>
+</body>
+</html>
